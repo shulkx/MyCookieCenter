@@ -1,0 +1,27 @@
+#!name=CookieCenter · 凭据捕获与签到中心
+#!desc=微信读书与中国电信凭据抓取及定时任务（Surge 版）。需开启 MITM 并信任证书，凭据在同一 Surge 环境的 BoxJS 中查看；不自动同步青龙。全部功能默认启用。
+#!author=TomCatXue
+#!homepage=https://github.com/shulkx/MyCookieCenter/tree/surge/surge
+
+[Script]
+CookieCenter-WeRead-Capture = type=http-request, pattern=(?i)^https?://(i\.)?weread\.qq\.com/(flip-card-game|user/|feature|free/library|checkfreequalify), requires-body=false, script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/weread/weread_cookie.js?v=e8e309cb, timeout=10
+CookieCenter-WeRead-LoginRequest = type=http-request, pattern=(?i)^https?://i\.weread\.qq\.com/login, requires-body=true, script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/weread/weread_cookie.js?v=e8e309cb, timeout=10
+CookieCenter-WeRead-LoginResponse = type=http-response, pattern=(?i)^https?://i\.weread\.qq\.com/login, requires-body=true, script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/weread/weread_cookie.js?v=e8e309cb, timeout=10
+
+CookieCenter-WeRead-Claim = type=cron, cronexp="0 23 * * *", script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/weread/weread_claim.js?v=a4dd2ca1, timeout=120, wake-system=true
+CookieCenter-WeRead-Flip = type=cron, cronexp="0 20 * * 2", script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/weread/weread_flip.js?v=983807c6, timeout=120, wake-system=true
+CookieCenter-WeRead-Free = type=cron, cronexp="0 10 * * 5", script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/weread/weread_free.js?v=96f2c3a2, timeout=120, wake-system=true
+
+CookieCenter-Telecom-MemberConfig = type=http-request, pattern=(?i)^https?://cdn\.bestpay\.cn/marketing/telecom\.member\.config\.json, requires-body=false, script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/telecom/telecom_draw.js?v=159c1722, timeout=10
+CookieCenter-Telecom-MemberLogin = type=http-response, pattern=(?i)^https?://mapi\.bestpay\.com\.cn/mapi/miniProgrameLoginEnc, requires-body=true, script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/telecom/telecom_draw.js?v=159c1722, timeout=10
+CookieCenter-Telecom-MemberGateway = type=http-request, pattern=(?i)^https?://spanner\.bestpay\.com\.cn:10081, requires-body=false, script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/telecom/telecom_draw.js?v=159c1722, timeout=10
+CookieCenter-Telecom-RightsCapture = type=http-request, pattern=(?i)^https?://(waphub|wappark)\.189\.cn/(jt-sign|gateway|JinDouMall)/, requires-body=false, script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/telecom/telecom_rights.js?v=9b1c2b88, timeout=10
+CookieCenter-Telecom-RightsResponse = type=http-response, pattern=(?i)^https?://(waphub|wappark)\.189\.cn/(jt-sign|gateway)/, requires-body=true, script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/telecom/telecom_rights.js?v=9b1c2b88, timeout=10
+CookieCenter-Telecom-BenefitCapture = type=http-request, pattern=(?i)^https://wx\.sx\.189\.cn/sx_ai_benefit/h5/HD, requires-body=false, script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/telecom/telecom_benefit.js?v=7501d440, timeout=60
+
+CookieCenter-Telecom-MemberDraw = type=cron, cronexp="0 9 * * 3", script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/telecom/telecom_draw.js?v=159c1722, timeout=180, wake-system=true
+CookieCenter-Telecom-Rights = type=cron, cronexp="59 23 * * *", script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/telecom/telecom_rights.js?v=9b1c2b88, timeout=90, wake-system=true
+CookieCenter-Telecom-Benefit = type=cron, cronexp="*/20 8-19 1-8 * *", script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/telecom/telecom_benefit.js?v=7501d440, timeout=120, wake-system=true
+
+[MITM]
+hostname = %APPEND% weread.qq.com, i.weread.qq.com, waphub.189.cn, wappark.189.cn, wx.sx.189.cn, mapi.bestpay.com.cn, mapi-h5.bestpay.com.cn, cdn.bestpay.cn, spanner.bestpay.com.cn, activity.bestpay.cn, h5.bestpay.cn
