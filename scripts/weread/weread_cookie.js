@@ -3,7 +3,7 @@
 @Description: 微信读书 · Cookie 与凭据捕获专用脚本
 @Author: TomCatXue
 @Architecture: 参照 paperclip-cookie 架构设计，捕获与执行彻底解耦
-@Updated: 2026-10-17 (补齐捕获成功通知)
+@Updated: 2026-11-19 (修复 Surge/Loon 语法错误；切换账号时不再混拼两个账号的凭据)
 ------------------------------------------
 支持捕获目标：
 1. 微信读书网页端 (weread.qq.com/web/) -> 捕获 wr_vid, wr_skey (供网页签到与API使用)
@@ -19,6 +19,9 @@
 
 const AUTH_KEY = "weread_auth";
 const DAI_DAI_AUTH_KEY = "weread_auth_v2";
+// /login 请求阶段暂存区：请求体里有 deviceId / refreshToken，但要等响应里的 vid 才知道属于哪个账号
+const LOGIN_REQ_KEY = "weread_login_req";
+const LOGIN_REQ_TTL_MS = 2 * 60 * 1000;
 const $ = new Env("WeRead · Cookie捕获");
 
 function getHeader(headers, name) {
@@ -33,6 +36,29 @@ function getStoredAuth() {
     let raw = $.getdata(AUTH_KEY);
     if (!raw) return {};
     try { return JSON.parse(raw); } catch (e) { return {}; }
+}
+
+// 换号保护：抓到的账号与当前记录不同时另起一条记录，避免把旧账号的
+// refreshToken / Web 票据和新账号的 vid 拼成一条看似完整、实则错误的凭据。
+function forAccount(existing, vid) {
+    vid = vid ? String(vid) : "";
+    if (!vid || !existing.vid || String(existing.vid) === vid) return existing;
+    const oldVid = String(existing.vid);
+    $.log(`[WeRead] 检测到切换账号 ${oldVid} → ${vid}，改为记录新账号`);
+    notifyOnce("switch", "微信读书 · 切换账号", `开始记录新账号 vid: ${vid}`,
+        `旧账号 ${oldVid} 的凭据已被替换，如尚未复制到青龙，请切回旧账号重新抓取。\n` +
+        `若稍后没有收到「满血凭据」通知，请在新账号下退出并重新登录一次，再打开翻牌页。`);
+    return {};
+}
+
+function takeLoginRequest() {
+    let raw = $.getdata(LOGIN_REQ_KEY);
+    if (!raw) return null;
+    $.setdata("", LOGIN_REQ_KEY);
+    try {
+        let data = JSON.parse(raw);
+        return data && Date.now() - Number(data.time || 0) < LOGIN_REQ_TTL_MS ? data : null;
+    } catch (e) { return null; }
 }
 
 function getDaidaiConfig() {
@@ -169,7 +195,12 @@ function syncToDaidai({ name, value, ident, group }, cb) {
                     return safeCb({ ok: false, reason: `面板存在 ${rows.length} 条同名变量且未匹配到当前特征，防误伤已拒绝覆盖` });
                 }
             } else if (rows.length === 1) {
-                target = rows[0];
+                // 唯一的同名变量属于其他账号时新建一条，而不是用新账号覆盖它
+                const only = rows[0];
+                const tVal = ident && ident.val ? String(ident.val).trim() : "";
+                if (!tVal || String(only.value || "").includes(tVal) || String(only.remarks || "").includes(tVal)) {
+                    target = only;
+                }
             }
 
             if (target) {
@@ -206,7 +237,13 @@ function saveAuthAndNotify(auth, tag, title, defaultSub, detailLines) {
     $.setdata(JSON.stringify(auth), DAI_DAI_AUTH_KEY);
 
     if (!isFullWeReadAuth(auth)) {
-        $.log("[WeRead] 凭据尚未抓全，已本地保存，等待补齐 App 登录票据与 Web 活动票据后统一通知/同步");
+        // 未抓全时不同步呆呆面板，但必须通知，否则看起来像完全没抓到
+        const missing = [];
+        if (!(auth.refreshToken && auth.deviceId)) missing.push("  - 换票凭证：在微信读书退出并重新登录一次");
+        if (!(auth.wrVid && auth.wrSkey)) missing.push("  - Web 票据：打开「翻牌」或「限免」活动页");
+        notifyOnce(tag, title, defaultSub + "（尚未抓全）",
+            [].concat(detailLines || [], "• 还缺：", missing).join("\n"));
+        $.log("[WeRead] 凭据尚未抓全，已本地保存，补齐后再同步呆呆面板");
         return;
     }
     saveAndSyncFullAuth(auth, tag, title, defaultSub, detailLines);
@@ -322,6 +359,7 @@ function parseCookieStr(cookieStr) {
         if (cookie) {
             let c = parseCookieStr(cookie);
             if (c.wr_vid && c.wr_skey) {
+                existing = forAccount(existing, c.wr_vid);
                 // 存储仅在变化时写入，通知则每次确认到凭据都提示（10 秒内去重）
                 let changed = (existing.wrVid !== c.wr_vid || existing.wrSkey !== c.wr_skey);
                 if (changed) {
@@ -348,26 +386,34 @@ function parseCookieStr(cookieStr) {
     // 3. 微信读书 App 登录接口 (/login) —— 核心：捕获 refreshToken + deviceId
     // ============================================================
     if (url.indexOf("/login") !== -1) {
-        // 请求阶段：提取 deviceId 与 refreshToken
-        if (typeof $request !== "undefined" && $request.body) {
-            let reqData = decodeBody($request.body);
-            if (reqData) {
-                if (reqData.deviceId && existing.deviceId !== reqData.deviceId) {
-                    existing.deviceId = reqData.deviceId;
-                    updated = true;
-                }
-                if (reqData.refreshToken && existing.refreshToken !== reqData.refreshToken) {
-                    existing.refreshToken = reqData.refreshToken;
-                    updated = true;
-                }
-                if (reqData.deviceName) existing.deviceName = reqData.deviceName;
+        let reqData = (typeof $request !== "undefined" && $request.body) ? decodeBody($request.body) : null;
+
+        // 请求阶段：只暂存 deviceId 与 refreshToken。此时还不知道登录的是哪个账号，
+        // 直接并入已存记录会把新账号的换票凭证拼进旧账号。
+        if (typeof $response === "undefined") {
+            if (reqData && (reqData.deviceId || reqData.refreshToken)) {
+                $.setdata(JSON.stringify({
+                    deviceId: reqData.deviceId || "",
+                    refreshToken: reqData.refreshToken || "",
+                    deviceName: reqData.deviceName || "",
+                    time: Date.now()
+                }), LOGIN_REQ_KEY);
             }
+            $done({});
+            return;
         }
 
-        // 响应阶段：提取 vid, skey, accessToken, refreshToken
-        if (typeof $response !== "undefined" && $response.body) {
+        // 响应阶段：由响应里的 vid 确定账号，再合并请求阶段暂存的字段
+        if (!reqData) reqData = takeLoginRequest();
+        if ($response.body) {
             let respData = decodeBody($response.body);
             if (respData && respData.vid && respData.skey) {
+                existing = forAccount(existing, respData.vid);
+                if (reqData) {
+                    if (reqData.deviceId) existing.deviceId = reqData.deviceId;
+                    if (reqData.refreshToken) existing.refreshToken = reqData.refreshToken;
+                    if (reqData.deviceName) existing.deviceName = reqData.deviceName;
+                }
                 existing.vid = String(respData.vid);
                 existing.skey = respData.skey;
                 if (respData.accessToken) {
@@ -409,6 +455,7 @@ function parseCookieStr(cookieStr) {
             if (lk === "channelid") channelid = headers[k];
             if (lk === "user-agent") ua = headers[k];
         }
+        existing = forAccount(existing, vid);
         // 去重：任一字段变化才保存
         let changed = (vid && existing.vid !== String(vid)) || (skey && existing.skey !== skey)
             || (basever && existing.basever !== basever) || (channelid && existing.channelid !== channelid)
@@ -454,6 +501,7 @@ function parseCookieStr(cookieStr) {
             if (m) deviceId = m[1];
         }
 
+        existing = forAccount(existing, vid);
         // 去重：仅当任一字段变化才写入/通知，进页面反复触发也只处理一次
         let changed = (existing.vid !== String(vid) || existing.skey !== skey
             || (basever && existing.basever !== basever) || (channelid && existing.channelid !== channelid)
@@ -501,5 +549,3 @@ function Env(name) {
     };
     this.log = function (msg) { console.log(msg); };
 }
-
-export { isFullWeReadAuth, saveAuthAndNotify as saveCompleteAuthForTest };

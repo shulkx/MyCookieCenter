@@ -6,8 +6,8 @@
 #!tag = 签到, Cookie, 凭据捕获, 呆呆面板, Dumb-Panel
 #!source = 984839a0f1415b0ecadb23343041b45ca2752804d82828ccca6c3ea66219cc2d, b188457ceff1ac86cbc84f8a2dbb73b9e0f47a30d111a0538877a1092453da5c
 #!type = normal
-#!version = 1.0.7
-#!date = 2026-11-21 14:40
+#!version = 1.0.8
+#!date = 2026-11-23 16:23
 
 # =================== 1. 独立业务开关 (开启即代表捕获并就地同步) ===================
 
@@ -25,8 +25,8 @@ daidai_secret = input,"",tag=呆呆面板AppSecret(可选),desc=填入 Open API 
 
 [Script]
 # --- 1. 【微信读书】凭据捕获与就地同步 (联动 weread 开关) ---
-request if ${url} ~= /^https?:\/\/(i\.)?weread\.qq\.com\/(flip-card-game|user\/|feature|free\/library|checkfreequalify|login)/i then script("https://raw.githubusercontent.com/TomCatXue/MyCookieCenter/main/scripts/weread/weread_cookie.js?v=7a55ec4b") with enable=${weread}, tag="微信读书·凭据捕获", requires_body=true, img_url="https://raw.githubusercontent.com/TomCatXue/MyCookieCenter/main/icons/weread.png"
-response if ${url} ~= /^https?:\/\/i\.weread\.qq\.com\/login/i then script("https://raw.githubusercontent.com/TomCatXue/MyCookieCenter/main/scripts/weread/weread_cookie.js?v=7a55ec4b") with enable=${weread}, tag="微信读书·登录回填", requires_body=true, img_url="https://raw.githubusercontent.com/TomCatXue/MyCookieCenter/main/icons/weread.png"
+request if ${url} ~= /^https?:\/\/(i\.)?weread\.qq\.com\/(flip-card-game|user\/|feature|free\/library|checkfreequalify|login)/i then script("https://raw.githubusercontent.com/TomCatXue/MyCookieCenter/main/scripts/weread/weread_cookie.js?v=e8e309cb") with enable=${weread}, tag="微信读书·凭据捕获", requires_body=true, img_url="https://raw.githubusercontent.com/TomCatXue/MyCookieCenter/main/icons/weread.png"
+response if ${url} ~= /^https?:\/\/i\.weread\.qq\.com\/login/i then script("https://raw.githubusercontent.com/TomCatXue/MyCookieCenter/main/scripts/weread/weread_cookie.js?v=e8e309cb") with enable=${weread}, tag="微信读书·登录回填", requires_body=true, img_url="https://raw.githubusercontent.com/TomCatXue/MyCookieCenter/main/icons/weread.png"
 
 # --- 2. 【扫描全能王】凭据捕获与就地同步 (联动 camscanner 开关) ---
 request if ${url} ~= /^https:\/\/api-cs\.intsig\.net\/user\/cs\/get_user_attribute/i then script("https://raw.githubusercontent.com/TomCatXue/MyCookieCenter/main/scripts/tools/camscanner/camscanner.cookie.js?v=4b221ef6") with enable=${camscanner}, tag="扫描全能王·凭据捕获", img_url="https://raw.githubusercontent.com/TomCatXue/MyCookieCenter/refs/heads/main/icons/camscanner.png"
