@@ -10,7 +10,7 @@ CookieCenter-WeRead-LoginResponse = type=http-response, pattern=(?i)^https?://i\
 
 CookieCenter-WeRead-Claim = type=cron, cronexp="0 23 * * *", script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/weread/weread_claim.js?v=a4dd2ca1, timeout=120, wake-system=true
 CookieCenter-WeRead-Flip = type=cron, cronexp="0 20 * * 2", script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/weread/weread_flip.js?v=983807c6, timeout=120, wake-system=true
-CookieCenter-WeRead-Free = type=cron, cronexp="0 10 * * 5", script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/weread/weread_free.js?v=96f2c3a2, timeout=120, wake-system=true
+CookieCenter-WeRead-Free = type=cron, cronexp="0 10 * * 5", script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/weread/weread_free.js?v=43a7eaf7, timeout=120, wake-system=true
 
 CookieCenter-Telecom-MemberConfig = type=http-request, pattern=(?i)^https?://cdn\.bestpay\.cn/marketing/telecom\.member\.config\.json, requires-body=false, script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/telecom/telecom_draw.js?v=159c1722, timeout=10
 CookieCenter-Telecom-MemberLogin = type=http-response, pattern=(?i)^https?://mapi\.bestpay\.com\.cn/mapi/miniProgrameLoginEnc, requires-body=true, script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/telecom/telecom_draw.js?v=159c1722, timeout=10
