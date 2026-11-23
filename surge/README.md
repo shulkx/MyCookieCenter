@@ -5,6 +5,7 @@
 | 模块 | 用途 |
 |---|---|
 | [CookieCenter.sgmodule](./CookieCenter.sgmodule) | 微信读书、中国电信凭据抓取与手机端定时任务 |
+| [UnicomCookie.sgmodule](./UnicomCookie.sgmodule) | 中国联通凭据抓取（仅抓取，无定时任务） |
 
 ## 安装
 
@@ -12,7 +13,10 @@
 
 ```text
 https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/surge/CookieCenter.sgmodule
+https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/surge/UnicomCookie.sgmodule
 ```
+
+两个模块互不依赖，按需安装。
 
 1. 开启 MITM，生成并安装 CA 证书，在 iOS「设置 → 通用 → 关于本机 → 证书信任设置」中开启完全信任。
 2. 模块用 `%APPEND%` 追加所需域名，不覆盖已有的 MITM 主机名。
@@ -60,6 +64,14 @@ https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/boxjs/DaiDaiPanel.
 
 SessionKey 可省略，多账号换行或用 `&` 分隔。模块不会自动同步青龙，凭据失效后需要重新抓取、复制。
 
+## 中国联通
+
+1. 安装并启用 `UnicomCookie.sgmodule`，打开已登录的联通 App 刷新首页；没有触发时退出账号重新登录一次。
+2. 收到「中国联通凭据 / 已保存到本机」通知后，在 BoxJS「中国联通 · 青龙凭据」中复制 `chinaUnicomCookie`。
+3. 粘贴到青龙同名变量 `chinaUnicomCookie`，格式为 `Token#AppId`，不加引号。
+
+详见 [scripts/tools/unicom/README.md](../scripts/tools/unicom/README.md)。
+
 ## 定时任务
 
 按手机本地时间执行：
@@ -88,6 +100,7 @@ SessionKey 可省略，多账号换行或用 `&` 分隔。模块不会自动同�
 `surge` 分支在原仓库 `main` 之上增加：
 
 - 本目录的 Surge 模块。
+- 中国联通抓取脚本 `scripts/tools/unicom/`，以及 `boxjs/DaiDaiPanel.boxjs.json` 中的「中国联通 · 青龙凭据」入口。
 - 修复 `scripts/weread/weread_cookie.js`：删除导致 Surge/Loon 语法错误的 `export` 行；未抓全时也发通知；切换账号时不再把两个账号的凭据拼在一起。
 
 `main` 分支与原仓库保持一致，可以直接用 GitHub 的「Sync fork」同步；之后把 `surge` 分支 rebase 到新的 `main` 上，并重新计算模块中的 `?v=` 参数。

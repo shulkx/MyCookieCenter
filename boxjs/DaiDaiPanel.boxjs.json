@@ -252,6 +252,34 @@
       ]
     },
     {
+      "id": "mycookiecenter.chinaunicom",
+      "name": "中国联通 · 青龙凭据",
+      "keys": [
+        "chinaUnicomCookie"
+      ],
+      "icon": "https://github.com/ChinaTelecomOperators/ChinaUnicom/releases/download/Prerelease-Alpha/icon.png",
+      "icons": [
+        "https://github.com/ChinaTelecomOperators/ChinaUnicom/releases/download/Prerelease-Alpha/icon.png",
+        "https://github.com/ChinaTelecomOperators/ChinaUnicom/releases/download/Prerelease-Alpha/icon.png"
+      ],
+      "repo": "https://github.com/shulkx/MyCookieCenter/tree/surge/scripts/tools/unicom",
+      "settings": [
+        {
+          "id": "chinaUnicomCookie",
+          "name": "📋【chinaUnicomCookie】联通凭据",
+          "val": "",
+          "type": "textarea",
+          "autoGrow": true,
+          "rows": 2,
+          "desc": "格式 Token#AppId（未捕获 AppId 时仅 Token）。启用 Surge 模块 UnicomCookie 后打开已登录的联通 App 自动捕获"
+        }
+      ],
+      "descs_html": [
+        "<span><b>💡 抓取方法：</b>启用 Surge 模块 UnicomCookie 并信任 MITM 证书，打开已登录的联通 App 刷新首页；没有触发时退出账号重新登录一次。</span>",
+        "<span><b>📋 复制到青龙：</b>复制 <code>chinaUnicomCookie</code> 的整个值，粘贴到青龙/呆呆面板同名环境变量，不加引号或前缀。</span>"
+      ]
+    },
+    {
       "id": "mycookiecenter.daidai",
       "name": "呆呆面板 · 凭据自动同步",
       "keys": [
