@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 ===================================================================
-📌 版本: v1.4.1 (2026-10-24 海岛逐浪应援版)
+📌 版本: v1.4.2 (2026-11-23 登录失败告警修复)
 中国联通 · 每日签到与福利任务聚合脚本
 ===================================================================
 new Env('中国联通');
@@ -29,6 +29,11 @@ tag: 中国联通
   a. 账号密码自动获取Token (推荐): export chinaUnicomCookie="138****0000#123456"
   b. Token#AppId 免密模式 (推荐): export chinaUnicomCookie="a3e4c1ff2xxxxxxxxx#912d30xxxxxx"
   c. 仅Token模式: export chinaUnicomCookie="a3e4c1ff2xxxxxxxxx"
+
+更新说明 (v1.4.2):
+  - 登录失败时输出服务端原因 (如「您的登录凭证已失效，请重新登录」)，不再显示 None
+  - 总报按实际登录结果判断: 登录失败不再误报「今日已签」等完成文案，并给出处理建议
+  - 行为变更: 所有账号均登录失败时以退出码 1 结束，面板会标记为失败
 
 更新说明 (v1.4.1):
   - 修复 UNICOM_MODULE_PIPELINE 全局作用域: 注册表移至顶层，消除类方法内 NameError
@@ -88,7 +93,7 @@ from requests.packages.urllib3.util.retry import Retry
 from Crypto.Cipher import AES, PKCS1_v1_5
 from Crypto.PublicKey import RSA
 from Crypto.Util.Padding import pad, unpad
-SCRIPT_VERSION = "1.4.1"
+SCRIPT_VERSION = "1.4.2"
 # ========================================
 # 全局配置 (globalConfig)
 # true=开启, false=关闭
@@ -361,6 +366,7 @@ class UserService:
     def __init__(self, index, config_str):
         self.index = index
         self.valid = False
+        self.login_error = ""
         self.notify_logs = []
         raw_session = requests.Session()
         import socket
@@ -624,6 +630,7 @@ class UserService:
                 self.save_token_to_cache()
                 return True
             if not self.token_online:
+                self.login_error = self.login_error or "未找到可用 Token"
                 if self.account_password:
                     self.log("账号密码登录已失效，未找到可用 Token，跳过")
                 return False
@@ -732,6 +739,7 @@ class UserService:
 
     def onLine(self):
         if not self.token_online:
+             self.login_error = "缺少 token_online"
              self.log("❌ 缺少 token_online，无法执行 onLine")
              return False
         try:
@@ -750,11 +758,14 @@ class UserService:
             if self.appId:
                 data['appId'] = self.appId
             res = self.request('post', url, data=data)
-            if not res: return False
+            if not res:
+                self.login_error = "登录接口无响应"
+                return False
             result = res.json()
             code = result.get('code')
             if code == '0' or code == 0:
                 self.valid = True
+                self.login_error = ""
                 desmobile = result.get('desmobile', '')
                 if len(desmobile) == 11 and desmobile.isdigit():
                     self.account_mobile = desmobile
@@ -769,9 +780,13 @@ class UserService:
                 self.private_token = result.get('private_token', '')
                 return True
             else:
-                self.log(f"登录失败[{code}]: {result.get('msg')}")
+                # 失败说明在 dsc 字段（如「您的登录凭证已失效，请重新登录」），msg 通常为空
+                reason = result.get('msg') or result.get('dsc') or result.get('desc') or "未返回说明"
+                self.login_error = f"[{code}] {reason}"
+                self.log(f"登录失败[{code}]: {reason}")
                 return False
         except Exception as e:
+            self.login_error = f"登录异常: {str(e)}"
             self.log(f"onLine 异常: {str(e)}")
             return False
 
@@ -7522,10 +7537,16 @@ def format_wechat_reading_summary(users):
         phone = u.mobile or u.account_mobile
         phone_str = mask_str(phone) if phone else f"账号{u.index}"
 
-        # 检查是否登录成功
-        if not getattr(u, 'token_online', None) and not getattr(u, 'token', None):
+        # 以 onLine 实际结果判断登录；token_online 来自环境变量，登录失败后仍有值，不能作依据
+        if not getattr(u, 'valid', False):
+            reason = getattr(u, 'login_error', '') or "原因未知"
+            if re.search(r"失效|过期|重新登录", reason):
+                hint = "打开联通 App 重新抓取凭据，更新环境变量 chinaUnicomCookie"
+            else:
+                hint = "查看运行日志排查网络或接口问题"
             bullets = [
-                "• 账号认证: 登录未通过 (凭证已过期或密码有误)",
+                f"• 账号认证: 登录未通过 ({reason})",
+                f"• 处理建议: {hint}",
                 "• 任务状态: 日常签到与福利任务已跳过"
             ]
         else:
@@ -7667,7 +7688,12 @@ def format_wechat_reading_summary(users):
             blocks.append("\n".join(bullets))
 
     first_phone = mask_str(users[0].mobile or users[0].account_mobile) if users else "主账号"
-    subtitle = f"执行完成 (1个账号) - 【{first_phone}】" if total_count == 1 else f"执行完成 ({total_count}个账号)"
+    if success_count == 0:
+        subtitle = "❌ 登录失败 (账号未通过认证)" if total_count == 1 else f"❌ 登录失败 ({total_count}个账号均未通过)"
+    elif success_count < total_count:
+        subtitle = f"⚠️ 部分完成 ({success_count}/{total_count}个账号登录成功)"
+    else:
+        subtitle = f"执行完成 (1个账号) - 【{first_phone}】" if total_count == 1 else f"执行完成 ({total_count}个账号)"
     body = "\n\n".join(blocks)
     return subtitle, body
 
@@ -7692,6 +7718,12 @@ def do_notify(users):
         print("🔔 青龙通知推送成功！")
     except Exception as e:
         print(f"⚠️ 推送通知异常: {str(e)}")
+
+def exit_if_all_login_failed(users):
+    """全部账号登录失败时以非零退出码结束，让面板把这次运行标记为失败。"""
+    if users and not any(u.valid for u in users):
+        print("❌ 所有账号均登录失败，以退出码 1 结束")
+        sys.exit(1)
 
 def main():
     global GRAB_AMOUNT
@@ -7819,6 +7851,7 @@ def main():
                 except Exception as e:
                     print(f"[-] Thread Error: {e}")
         do_notify(users)
+        exit_if_all_login_failed(users)
         return
     print("🚀 开始串行执行日常任务...")
     print("")
@@ -7837,6 +7870,7 @@ def main():
              u.log("登录流程失败，跳过该账号")
     cross_view_security_share_keys(users)
     do_notify(users)
+    exit_if_all_login_failed(users)
 if __name__ == "__main__":
     main()
 
