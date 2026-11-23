@@ -66,9 +66,9 @@ SessionKey 可省略，多账号换行或用 `&` 分隔。模块不会自动同�
 
 ## 中国联通
 
-1. 安装并启用 `UnicomCookie.sgmodule`，打开已登录的联通 App 刷新首页；没有触发时退出账号重新登录一次。
+1. 安装并启用 `UnicomCookie.sgmodule`，在多任务界面彻底关闭联通 App 后重新打开；没收到通知时退出账号重新登录一次。
 2. 收到「中国联通凭据 / 已保存到本机」通知后，在 BoxJS「中国联通 · 青龙凭据」中复制 `chinaUnicomCookie`。
-3. 粘贴到青龙同名变量 `chinaUnicomCookie`，格式为 `Token#AppId`，不加引号。
+3. 粘贴到青龙同名变量 `chinaUnicomCookie`，格式为 `Token#AppId`，不加引号。之后不要在手机上退出联通账号，退出会作废这份凭据。
 
 详见 [scripts/tools/unicom/README.md](../scripts/tools/unicom/README.md)。
 

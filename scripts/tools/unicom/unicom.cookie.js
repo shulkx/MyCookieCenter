@@ -2,18 +2,30 @@
  * 中国联通 · Surge 本地凭据抓取
  * 打开已登录的联通 App，凭据变化时保存到 BoxJS 的 chinaUnicomCookie。
  * 安装与使用步骤见同目录 README.md。
- * @Updated: 2026-09-23
+ * @Updated: 2026-11-23
  */
 
 (function main() {
     const storageKey = 'chinaUnicomCookie';
-    const endpoint = /^https:\/\/m\.client\.10010\.com\/mobileService\/onLine\.htm(?:\?|$)/;
+    // iOS App 13.2 起登录接口走 loginxx 域名，旧版走 m.client。不匹配 logout.htm：它携带的是正在作废的旧 token。
+    // login_vcode_member.htm：冷启动和每次登录后发出，请求体带当前有效的 token_online 与 appId。
+    const memberRequest = /^https:\/\/(?:m\.client|loginxx)\.10010\.com\/mobileService\/login_vcode_member\.htm(?:\?|$)/;
+    // onLine.htm 会轮换 token：请求体里是即将被换掉的旧值，新值只在成功响应里。
+    const onlineResponse = /^https:\/\/(?:m\.client|loginxx)\.10010\.com\/mobileService\/onLine\.htm(?:\?|$)/;
 
     try {
-        if (typeof $request === 'undefined' || !$request || $request.method !== 'POST') return;
-        if (!endpoint.test($request.url || '') || typeof $request.body !== 'string') return;
+        if (typeof $request === 'undefined' || !$request) return;
+        const url = $request.url || '';
+        let fields;
+        if (typeof $response !== 'undefined' && $response) {
+            if (!onlineResponse.test(url) || typeof $response.body !== 'string') return;
+            fields = parseBody($response.body);
+            if (String(fields.code) !== '0') return;
+        } else {
+            if ($request.method !== 'POST' || !memberRequest.test(url) || typeof $request.body !== 'string') return;
+            fields = parseBody($request.body);
+        }
 
-        const fields = parseBody($request.body);
         const token = fields.token_online;
         const appId = fields.appId;
         if (!isCredential(token)) return;

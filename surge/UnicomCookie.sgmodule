@@ -3,7 +3,8 @@
 #!homepage=https://github.com/shulkx/MyCookieCenter/tree/surge/scripts/tools/unicom
 
 [Script]
-UnicomCookie = type=http-request, pattern=^https://m\.client\.10010\.com/mobileService/onLine\.htm(?:\?|$), requires-body=true, script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/tools/unicom/unicom.cookie.js?v=77e85d13, timeout=10
+UnicomCookie = type=http-request, pattern=^https://(?:m\.client|loginxx)\.10010\.com/mobileService/login_vcode_member\.htm(?:\?|$), requires-body=true, script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/tools/unicom/unicom.cookie.js?v=51e6dd60, timeout=10
+UnicomCookieOnline = type=http-response, pattern=^https://(?:m\.client|loginxx)\.10010\.com/mobileService/onLine\.htm(?:\?|$), requires-body=true, script-path=https://raw.githubusercontent.com/shulkx/MyCookieCenter/surge/scripts/tools/unicom/unicom.cookie.js?v=51e6dd60, timeout=10
 
 [MITM]
-hostname = %APPEND% m.client.10010.com
+hostname = %APPEND% m.client.10010.com, loginxx.10010.com
